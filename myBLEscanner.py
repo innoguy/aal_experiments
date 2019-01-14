@@ -210,32 +210,29 @@ class BLE_Device(Peripheral):
             print("Service discovery completed.")
 
 class SensorBase:
-    # Derived classes should set: svcUUID, ctrlUUID, dataUUID
-    sensorOn  = struct.pack("B", 0x01)
-    sensorOff = struct.pack("B", 0x00)
-
     def __init__(self, periph):
         self.periph = periph
         self.service = None
         self.ctrl = None
         self.data = None
+        self.sensorOn = None
 
-    def enable(self):
+    def enable(self,bits):
         if self.service is None:
             self.service = self.periph.getServiceByUUID(self.svcUUID)
         if self.ctrl is None:
             self.ctrl = self.service.getCharacteristics(self.ctrlUUID) [0]
         if self.data is None:
             self.data = self.service.getCharacteristics(self.dataUUID) [0]
-        if self.sensorOn is not None:
-            self.ctrl.write(self.sensorOn,withResponse=True)
+        if self.sensorOn is None:
+            self.ctrl.write(bits,withResponse=True)
 
     def read(self):
         return self.data.read()
 
-    def disable(self):
+    def disable(self,bits):
         if self.ctrl is not None:
-            self.ctrl.write(self.sensorOff)
+            self.ctrl.write(bits)
             
 class Sensor(SensorBase):
     def __init__(self, periph):
@@ -250,6 +247,7 @@ class Sensor(SensorBase):
         self.svcUUID = None
         self.dataUUID = None
         self.ctrlUUID = None
+        self.ctrlBits = 0
 
     def setMAC(self,m):
         self.mac = m
@@ -274,16 +272,52 @@ class Sensor(SensorBase):
         
     def setSensorType(self, t):
         self.sensorType = t
-        
+
+    def enable(self):
+        if (self.sensorType=='IMU'):
+            bits = struct.pack("<H", 0x02ff)
+        else:
+            bits = struct.pack("B", 0x01)
+        super(Sensor,self).enable(bits)
+
+    def disable(self):
+        if (self.sensorTyp=='IMU'):
+            bits = struct.pack("<H",0x0000)
+        else:
+            bits = ~struct.pack("B", 0x00)    
+        super(Sensor,self).disable(bits)
+            
     def read(self):
         if (self.sensorType=='Humidity'):
             (rawT, rawH) = struct.unpack('<HH', self.data.read())
             temp = -46.85 + 175.72 * (rawT / 65536.0)
             RH = -6.0 + 125.0 * ((rawH & 0xFFFC)/65536.0)
             return (temp, RH)
+        elif (self.sensorType=='Barometer'):    
+            (tL,tM,tH,pL,pM,pH) = struct.unpack('<BBBBBB', self.data.read())
+            temp = (tH*65536 + tM*256 + tL) / 100.0
+            press = (pH*65536 + pM*256 + pL) / 100.0
+            return (temp, press)
+        elif (self.sensorType=='IMU'):
+            # GYRO
+            rawVals = self.rawRead()[0:3]
+            gyr = tuple([ v*500.0/65536.0 for v in rawVals ])  
+            # MAGN
+            rawVals = self.rawRead()[6:9]
+            mag = tuple([ v*4912.0/32760.0 for v in rawVals ]) 
+            # ACCEL
+            rawVals = self.rawRead()[3:6]
+            acc = tuple([ v*8.0/32768.0 for v in rawVals ])
+            return ((gyr,mag,acc))
         else:
             return("Cannot read this type of sensor.")        
 
+    def rawRead(self):
+        dval = self.data.read()
+        return struct.unpack("<hhhhhhhhh", dval)
+
+        
+    
 
 # specify commandline options       
 parser = argparse.ArgumentParser()
@@ -352,14 +386,20 @@ for i, dev in enumerate(devices):
                 ssr.setSensorType(funct)
                 try:
                     ssr.enable()
+                    print("Successfully enabled sensr: ",ssr.mac,ssr.deviceType,ssr.sensorType)
                 except:
                     print("Could not enable sensor: ",ssr.mac,ssr.deviceType,ssr.sensorType)
                 sensors.append(ssr)
                 
 for s in sensors:    
     if (s.deviceType=='CC2650' and s.sensorType=='Humidity'):
-        print("Took humidity sensor")
-        print(s.read())
+        temp, hum = s.read()
+        print("POS:",s.position,"TEMP:",temp,"HUM:",hum)
+    elif (s.deviceType=='CC2650' and s.sensorType=='Barometer'):
+        temp, pres = s.read()
+        print("POS:",s.position,"TEMP:",temp,"PRES:",pres)
+    elif (s.deviceType=='CC2650' and s.sensorType=='IMU'):
+        print("POS:",s.position,"IMU:",s.read())
             
         
         
