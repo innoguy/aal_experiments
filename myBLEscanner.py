@@ -107,6 +107,52 @@ class _paireddevice():
                 print ('{"deviceuid":"'+self.addr+'","devicename":"'+self.friendlyname+'","'+tag+'":"'+str(value)+'"}')
         sys.stdout.flush()
 
+# this is a generic sensortag
+class _SensorTag(_paireddevice):
+    def __init__( self, dev, devdata):
+        if args.info:
+            print ("creating _SensorTag")
+        self.tag = bluepy.sensortag.SensorTag(dev.addr)
+        _paireddevice.__init__( self, dev, devdata )
+        self.devicetype = "SensorTag generic"
+        if args.info:
+            print ("created _SensorTag")
+        return True
+    def runinit(self, sensors):
+        if args.info:
+            print ("_Sensortag runinit", sensors)
+        self.report("status","enabled "+repr(sensors))
+        for sensor in sensors:
+            if args.info:
+                print ("enabling",sensor)
+            tagfn = self._sensorlookup(sensor)
+            if tagfn:
+                tagfn.enable()
+#        time.sleep( 1.0 )
+        return True
+    def runread(self, sensors):
+        try:
+            for sensor in sensors:
+                tagfn = self._sensorlookup(sensor)
+                if tagfn:
+                    self.report(sensor, tagfn.read())
+        except bluepy.btle.BTLEException:
+            self.report("status","lost")
+            return False
+        return True
+        
+# depending on the bluetooth device type, this
+# creates an instance of the appropriate class
+def paireddevicefactory( dev ):
+    # get the device name to decide which type of device to create
+    devdata = {}
+    for (adtype, desc, value) in dev.getScanData():
+        devdata[desc]=value
+    if BTNAME not in devdata.keys():
+        devdata[BTNAME] = 'Unknown!'
+        return None
+    else:
+        return BLE_Device( dev, devdata )
     
 # this scandelegate handles discovery of new devices
 class ScanDelegate(bluepy.btle.DefaultDelegate):
@@ -229,6 +275,14 @@ class Sensor(SensorBase):
     def setSensorType(self, t):
         self.sensorType = t
         
+    def read(self):
+        if (self.sensorType=='Humidity'):
+            (rawT, rawH) = struct.unpack('<HH', self.data.read())
+            temp = -46.85 + 175.72 * (rawT / 65536.0)
+            RH = -6.0 + 125.0 * ((rawH & 0xFFFC)/65536.0)
+            return (temp, RH)
+        else:
+            return("Cannot read this type of sensor.")        
 
 
 # specify commandline options       
@@ -296,19 +350,16 @@ for i, dev in enumerate(devices):
                 ssr.setDataUUID(data)
                 ssr.setControlUUID(ctrl)
                 ssr.setSensorType(funct)
+                try:
+                    ssr.enable()
+                except:
+                    print("Could not enable sensor: ",ssr.mac,ssr.deviceType,ssr.sensorType)
                 sensors.append(ssr)
-x = None   # random sensor
                 
 for s in sensors:    
-    print("Sensor:")
-    print(s.position, s.mac, s.deviceType, s.sensorType)
-    if ('CC2650' in s.deviceType):
-        x = s
-    print(s.svcUUID)
-    print(s.dataUUID)
-    print(s.ctrlUUID)
-
-print(x.read())
+    if (s.deviceType=='CC2650' and s.sensorType=='Humidity'):
+        print("Took humidity sensor")
+        print(s.read())
             
         
         
