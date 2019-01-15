@@ -2,6 +2,7 @@ import bluepy
 import threading
 import struct
 import argparse
+import time
 from bluepy.btle import UUID, Peripheral, DefaultDelegate, AssignedNumbers
 
 devicenames = {}
@@ -390,16 +391,17 @@ for i, dev in enumerate(devices):
                 except:
                     print("Could not enable sensor: ",ssr.mac,ssr.deviceType,ssr.sensorType)
                 sensors.append(ssr)
-                
-for s in sensors:    
-    if (s.deviceType=='CC2650' and s.sensorType=='Humidity'):
-        temp, hum = s.read()
-        print("POS:",s.position,"TEMP:",temp,"HUM:",hum)
-    elif (s.deviceType=='CC2650' and s.sensorType=='Barometer'):
-        temp, pres = s.read()
-        print("POS:",s.position,"TEMP:",temp,"PRES:",pres)
-    elif (s.deviceType=='CC2650' and s.sensorType=='IMU'):
-        print("POS:",s.position,"IMU:",s.read())
-            
+       
+while(True):       
+    for s in sensors:    
+        if (s.deviceType=='CC2650' and s.sensorType=='Humidity'):
+            temp, hum = s.read()
+            print("POS:",s.position,"TEMP:",temp,"HUM:",hum)
+        elif (s.deviceType=='CC2650' and s.sensorType=='Barometer'):
+            temp, pres = s.read()
+            print("POS:",s.position,"TEMP:",temp,"PRES:",pres)
+        elif (s.deviceType=='CC2650' and s.sensorType=='IMU'):
+            print("POS:",s.position,"IMU:",s.read())
+    time.sleep(10)            
         
         
