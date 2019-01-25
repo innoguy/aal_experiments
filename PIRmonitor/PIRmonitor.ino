@@ -113,9 +113,9 @@ void setup(void)
   // ble.setInterCharWriteDelay(5); // 5 ms
 
   /* Change the device name to make it easier to find */
-  //Serial.println(F("Setting device name to 'Bluefruit pir': "));
+  //Serial.println(F("Setting device name to 'Bluefruit PIR': "));
 
-  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Bluefruit pir")) ) {
+  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Bluefruit PIR")) ) {
     error(F("Could not set device name?"));
   }
 

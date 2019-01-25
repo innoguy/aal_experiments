@@ -88,8 +88,8 @@ def main():
     parser = argparse.ArgumentParser()
     arg = parser.parse_args(sys.argv[1:])
 
-    hosts = ['B0:91:22:F6:EB:01'] 
-
+    hosts = ['FF:A8:6B:DA:67:76'] 
+    
     tag  = list(range(len(hosts)))
 
     for i, host in enumerate(hosts): 
