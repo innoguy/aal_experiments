@@ -9,6 +9,7 @@ devicenames = {}
 DEVICENAMESFILE = 'devices.txt'
 AUTODETECT = "-"
 BTNAME='Complete Local Name'
+HCI=1
 
 def is_float(text):
     try:
@@ -310,6 +311,12 @@ class Sensor(SensorBase):
             rawVals = self.rawRead()[3:6]
             acc = tuple([ v*8.0/32768.0 for v in rawVals ])
             return ((gyr,mag,acc))
+        elif (self.sensorType=='PIR'):
+            rawVals = self.data.read()
+            if int.from_bytes(rawVals,"big") == 90:
+                return 'On'
+            else:
+                return 'Off'
         else:
             return("Cannot read this type of sensor.")        
 
@@ -333,7 +340,7 @@ if args.info:
     print ("specified devices:",devicenames)
 
 scandelegate = DefaultDelegate()
-scanner = bluepy.btle.Scanner().withDelegate(scandelegate)
+scanner = bluepy.btle.Scanner(HCI).withDelegate(scandelegate)
 devices = scanner.scan(timeout=5.0)
 
 sd = dict()     # Known sensor devices (from file)
@@ -363,6 +370,8 @@ fn.close()
 
 tag  = list(range(len(devices)))
 for i, dev in enumerate(devices):
+    if not dev.addr in sp.keys():
+        continue
     test = paireddevicefactory(dev)
     funct = ''
     dtype = ''
@@ -402,6 +411,8 @@ while(True):
             print("POS:",s.position,"TEMP:",temp,"PRES:",pres)
         elif (s.deviceType=='CC2650' and s.sensorType=='IMU'):
             print("POS:",s.position,"IMU:",s.read())
+        elif (s.sensorType=='PIR'):
+            print(s.read())
     time.sleep(10)            
         
         
