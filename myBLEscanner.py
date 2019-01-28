@@ -7,6 +7,7 @@ from bluepy.btle import UUID, Peripheral, DefaultDelegate, AssignedNumbers
 
 devicenames = {}
 DEVICENAMESFILE = 'devices.txt'
+MAXDEVICES = 10
 AUTODETECT = "-"
 BTNAME='Complete Local Name'
 HCI=1
@@ -170,18 +171,18 @@ class ScanDelegate(bluepy.btle.DefaultDelegate):
             if args.only:
                 if args.info:
                     print ("only", dev.addr, devicenames)
-                if dev.addr not in devicenames:
-                    # ignore it!
-                    if args.info:
-                        print ("ignoring only",dev.addr)
-                    return
+            if dev.addr not in devicenames:
+                # ignore it!
+                if args.info:
+                    print ("ignoring only",dev.addr)
+                return
             if len(self.activedevlist)<MAXDEVICES:
                 thisdev = paireddevicefactory(dev)
                 if args.info:
                     print ("thisdev=",thisdev)
                 if thisdev:
                     self.activedevlist.append(thisdev)
-    #                thisdev.pair()
+                    thisdev.pair()
                     thisdev.start(args.fast,args.medium,args.slow)
                 if args.info:
                     print ("activedevlist=",self.activedevlist)
@@ -324,9 +325,6 @@ class Sensor(SensorBase):
         dval = self.data.read()
         return struct.unpack("<hhhhhhhhh", dval)
 
-        
-    
-
 # specify commandline options       
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--name",help="basename for default device names if uid not specified in -d option (only used if -o not specified) default is 'ST-' followed by a digit")
@@ -339,7 +337,7 @@ args = parser.parse_args()
 if args.info:
     print ("specified devices:",devicenames)
 
-scandelegate = DefaultDelegate()
+scandelegate = ScanDelegate()
 scanner = bluepy.btle.Scanner(HCI).withDelegate(scandelegate)
 devices = scanner.scan(timeout=5.0)
 
