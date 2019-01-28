@@ -396,9 +396,10 @@ for i, dev in enumerate(devices):
                 ssr.setSensorType(funct)
                 try:
                     ssr.enable()
-                    print("Successfully enabled sensr: ",ssr.mac,ssr.deviceType,ssr.sensorType)
+                    print("Successfully enabled sensor: ",ssr.mac,ssr.deviceType,ssr.sensorType)
                 except:
-                    print("Could not enable sensor: ",ssr.mac,ssr.deviceType,ssr.sensorType)
+                    # print("Could not enable sensor: ",ssr.mac,ssr.deviceType,ssr.sensorType)
+                    pass
                 sensors.append(ssr)
        
 while(True):       

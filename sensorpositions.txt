@@ -1,12 +1,3 @@
-EC:F0:0E:3F:F1:F0, AirMentor, Office
-B0:91:22:F6:EB:01, CC2650 SensorTag, Office
-B0:91:22:F6:A4:86, CC2650 SensorTag, Office
-B0:91:22:F6:EB:01, CC2650 SensorTag, Office
-A4:34:F1:F3:5E:73, CC1530 SensorTag, Bedroom
-A4:34:F1:F3:7F:38, CC1530 SensorTag, Bathroom
-D5:95:92:FB:4D:3C, Nano S, Garage
-F7:87:BF:9D:AE:CE, Nano S, Kitchen
-D9:40:93:31:0C:BA, Eve Energy, Office
-
-
-
+FF:A8:6B:DA:67:76, Feather, Office
+A4:34:F1:F3:63:B1, CC1350, Office
+A4:34:F1:F3:5E:73, CC1350, Bedroom
