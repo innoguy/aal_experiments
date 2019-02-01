@@ -1,0 +1,14 @@
+This repo contains small mini projects that derisk the MindPiece.online system 
+_______________________________________________________________________________
+
+pirsensor.py: try to communicate with PIR sensor on Feather M0. Now integrated into myBLEsensor.py
+cal_imu.py: experiment to see if IMU can be used as window/door sensor - confirmed
+myBLEsensor.py: central reading of all BLE sensors used (SensorTag, FeatherM0+sensor) - working
+sensors.txt: list of GATT characteristics we want to use in detected BLE sensors
+sensorpositions.txt: list of BLE sensors we want to use including their position in the house 
+PIRMonitor: Arduino code for PIR sensor on Feather M0 - Bluefruit LE
+aal_logic.py: minimal implementation of warning/alarm system we want to come to
+sensortag.py: basis from TI for SensorTag
+
+Guy Coen
+2019/02/01
