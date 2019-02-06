@@ -1,5 +1,3 @@
-# 2018/10/19 GUCO Modified to deal only with CC1350 (version later than 2017 with TMP007)
-
 from bluepy.btle import UUID, Peripheral, DefaultDelegate, AssignedNumbers
 import struct
 import math
@@ -462,6 +460,7 @@ def main():
 
     print('Connecting to ' + host)
     tag = SensorTag(host)
+    filename = "cal_{0}.pkl".format(host.replace(':','')) 
 
     tag.accelerometer.enable()
     tag.magnetometer.enable()
@@ -491,14 +490,12 @@ def main():
                 pc[j] = x_m
             cp[k] = [pc[0],pc[1],pc[2],pc[3],pc[4],pc[5],pc[6],pc[7],pc[8]]
         print(cp)
-        with open('cal_imu.pkl', 'wb') as f:
+        with open(filename, 'wb') as f:
             pickle.dump(cp, f)
     else:
-        with open('cal_imu.pkl', 'rb') as f:
+        with open(filename, 'rb') as f:
             cp = pickle.load(f)    
-    
         print("Testing\n")
-
         for k in range(10):  
             input("Set position")
             p = [tag.magnetometer.read()[0], tag.magnetometer.read()[1], tag.magnetometer.read()[2], tag.accelerometer.read()[0], tag.accelerometer.read()[1], tag.accelerometer.read()[2], tag.gyroscope.read()[0], tag.gyroscope.read()[1], tag.gyroscope.read()[2]]
@@ -511,8 +508,6 @@ def main():
                     imin = i
                     dmin = d
             print("Probably {0}".format(positions[imin]))
-
-    
     tag.disconnect()
 
 if __name__ == "__main__":
