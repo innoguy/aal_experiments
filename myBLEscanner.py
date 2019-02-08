@@ -129,6 +129,40 @@ class SensorTag(Peripheral):     # Special type of BLE_Device
         self.lightmeter = OpticalSensorOPT3001(self)
         self.battery = BatterySensor(self)
 
+
+class KeypressDelegate(DefaultDelegate):
+    BUTTON_L = 0x02
+    BUTTON_R = 0x01
+    ALL_BUTTONS = (BUTTON_L | BUTTON_R)
+
+    _button_desc = { 
+        BUTTON_L : "Left button",
+        BUTTON_R : "Right button",
+        ALL_BUTTONS : "Both buttons"
+    } 
+
+    def __init__(self):
+        DefaultDelegate.__init__(self)
+        self.lastVal = 0
+
+    def handleNotification(self, hnd, data):
+        # NB: only one source of notifications at present
+        # so we can ignore 'hnd'.
+        val = struct.unpack("B", data)[0]
+        down = (val & ~self.lastVal) & self.ALL_BUTTONS
+        if down != 0:
+            self.onButtonDown(down)
+        up = (~val & self.lastVal) & self.ALL_BUTTONS
+        if up != 0:
+            self.onButtonUp(up)
+        self.lastVal = val
+
+    def onButtonUp(self, but):
+        print ( "** " + self._button_desc[but] + " UP")
+
+    def onButtonDown(self, but):
+        print ( "** " + self._button_desc[but] + " DOWN")
+
 # this is a generic sensortag
 class _SensorTag(_paireddevice):
     def __init__( self, dev, devdata):
@@ -190,16 +224,9 @@ class SensorBase:
             self.ctrl.write(bits)
 
 class AccelerometerSensor(SensorBase):
-    svcUUID  = _TI_UUID(0xAA10)
-    dataUUID = _TI_UUID(0xAA11)
-    ctrlUUID = _TI_UUID(0xAA12)
 
     def __init__(self, periph):
-        SensorBase.__init__(self, periph)
-        if periph.firmwareVersion.startswith("1.4 "):
-            self.scale = 64.0
-        else:
-            self.scale = 16.0
+        self.scale = 64.0
 
     def read(self):
         '''Returns (x_accel, y_accel, z_accel) in units of g'''
@@ -211,9 +238,6 @@ class AccelerometerSensor(SensorBase):
         return tuple([ (val/self.scale) for val in x_y_z ])
 
 class MovementSensorMPU9250(SensorBase):
-    svcUUID  = _TI_UUID(0xAA80)
-    dataUUID = _TI_UUID(0xAA81)
-    ctrlUUID = _TI_UUID(0xAA82)
 
     sensorOn = None
     GYRO_XYZ =  7
@@ -299,9 +323,6 @@ class AccelerometerSensorMPU9250:
         return tuple([ v*self.scale for v in rawVals ])
 
 class HumiditySensor(SensorBase):
-    svcUUID  = _TI_UUID(0xAA20)
-    dataUUID = _TI_UUID(0xAA21)
-    ctrlUUID = _TI_UUID(0xAA22)
 
     def __init__(self, periph):
         SensorBase.__init__(self, periph)
@@ -314,9 +335,6 @@ class HumiditySensor(SensorBase):
         return (temp, RH)
 
 class HumiditySensorHDC1000(SensorBase):
-    svcUUID  = _TI_UUID(0xAA20)
-    dataUUID = _TI_UUID(0xAA21)
-    ctrlUUID = _TI_UUID(0xAA22)
 
     def __init__(self, periph):
         SensorBase.__init__(self, periph)
@@ -329,9 +347,6 @@ class HumiditySensorHDC1000(SensorBase):
         return (temp, RH)
 
 class MagnetometerSensor(SensorBase):
-    svcUUID  = _TI_UUID(0xAA30)
-    dataUUID = _TI_UUID(0xAA31)
-    ctrlUUID = _TI_UUID(0xAA32)
 
     def __init__(self, periph):
         SensorBase.__init__(self, periph)
@@ -360,10 +375,6 @@ class MagnetometerSensorMPU9250:
         return tuple([ v*self.scale for v in rawVals ])
 
 class BarometerSensor(SensorBase):
-    svcUUID  = _TI_UUID(0xAA40)
-    dataUUID = _TI_UUID(0xAA41)
-    ctrlUUID = _TI_UUID(0xAA42)
-    calUUID  = _TI_UUID(0xAA43)
     sensorOn = None
 
     def __init__(self, periph):
@@ -393,9 +404,6 @@ class BarometerSensor(SensorBase):
         return (temp,pres)
 
 class BarometerSensorBMP280(SensorBase):
-    svcUUID  = _TI_UUID(0xAA40)
-    dataUUID = _TI_UUID(0xAA41)
-    ctrlUUID = _TI_UUID(0xAA42)
 
     def __init__(self, periph):
         SensorBase.__init__(self, periph)
@@ -407,9 +415,6 @@ class BarometerSensorBMP280(SensorBase):
         return (temp, press)
 
 class GyroscopeSensor(SensorBase):
-    svcUUID  = _TI_UUID(0xAA50)
-    dataUUID = _TI_UUID(0xAA51)
-    ctrlUUID = _TI_UUID(0xAA52)
     sensorOn = struct.pack("B",0x07)
 
     def __init__(self, periph):
@@ -437,8 +442,6 @@ class GyroscopeSensorMPU9250:
         return tuple([ v*self.scale for v in rawVals ])
 
 class KeypressSensor(SensorBase):
-    svcUUID = UUID(0xFFE0)
-    dataUUID = UUID(0xFFE1)
     ctrlUUID = None
     sensorOn = None
     toggle = None
@@ -458,9 +461,6 @@ class KeypressSensor(SensorBase):
         return toggle
 
 class OpticalSensorOPT3001(SensorBase):
-    svcUUID  = _TI_UUID(0xAA70)
-    dataUUID = _TI_UUID(0xAA71)
-    ctrlUUID = _TI_UUID(0xAA72)
 
     def __init__(self, periph):
        SensorBase.__init__(self, periph)
@@ -473,9 +473,6 @@ class OpticalSensorOPT3001(SensorBase):
         return 0.01 * (m << e)
 
 class BatterySensor(SensorBase):
-    svcUUID  = UUID("0000180f-0000-1000-8000-00805f9b34fb")
-    dataUUID = UUID("00002a19-0000-1000-8000-00805f9b34fb")
-    ctrlUUID = None
     sensorOn = None
 
     def __init__(self, periph):
@@ -497,6 +494,8 @@ def paireddevicefactory( dev ):
     if BTNAME not in devdata.keys():
         devdata[BTNAME] = 'Unknown!'
         return None
+    elif ('CC1350' in devdata[BTNAME]) or ('CC2620' in devdata[BTNAME]):
+        return SensorTag( dev, devdata)
     else:
         return BLE_Device( dev, devdata )
     
@@ -554,8 +553,6 @@ class BLE_Device(Peripheral):
         if version==AUTODETECT:
             svcs = self.discoverServices()
             print("Service discovery completed.")
-
-
             
 class Sensor(SensorBase):
     def __init__(self, periph):
