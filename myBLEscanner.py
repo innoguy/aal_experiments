@@ -163,6 +163,32 @@ class _SensorTag(_paireddevice):
             return False
         return True
 
+
+class SensorBase:
+    def __init__(self, periph):
+        self.periph = periph
+        self.service = None
+        self.ctrl = None
+        self.data = None
+        self.sensorOn = None
+
+    def enable(self,bits):
+        if self.service is None:
+            self.service = self.periph.getServiceByUUID(self.svcUUID)
+        if self.ctrl is None:
+            self.ctrl = self.service.getCharacteristics(self.ctrlUUID) [0]
+        if self.data is None:
+            self.data = self.service.getCharacteristics(self.dataUUID) [0]
+        if self.sensorOn is None:
+            self.ctrl.write(bits,withResponse=True)
+
+    def read(self):
+        return self.data.read()
+
+    def disable(self,bits):
+        if self.ctrl is not None:
+            self.ctrl.write(bits)
+
 class AccelerometerSensor(SensorBase):
     svcUUID  = _TI_UUID(0xAA10)
     dataUUID = _TI_UUID(0xAA11)
@@ -529,30 +555,7 @@ class BLE_Device(Peripheral):
             svcs = self.discoverServices()
             print("Service discovery completed.")
 
-class SensorBase:
-    def __init__(self, periph):
-        self.periph = periph
-        self.service = None
-        self.ctrl = None
-        self.data = None
-        self.sensorOn = None
 
-    def enable(self,bits):
-        if self.service is None:
-            self.service = self.periph.getServiceByUUID(self.svcUUID)
-        if self.ctrl is None:
-            self.ctrl = self.service.getCharacteristics(self.ctrlUUID) [0]
-        if self.data is None:
-            self.data = self.service.getCharacteristics(self.dataUUID) [0]
-        if self.sensorOn is None:
-            self.ctrl.write(bits,withResponse=True)
-
-    def read(self):
-        return self.data.read()
-
-    def disable(self,bits):
-        if self.ctrl is not None:
-            self.ctrl.write(bits)
             
 class Sensor(SensorBase):
     def __init__(self, periph):
