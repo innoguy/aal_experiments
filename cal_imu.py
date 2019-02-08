@@ -1,5 +1,6 @@
 from bluepy.btle import UUID, Peripheral, DefaultDelegate, AssignedNumbers
 import struct
+import os
 import math
 import time
 import json
@@ -135,6 +136,8 @@ class MovementSensorMPU9250(SensorBase):
     ACCEL_RANGE_8G  = 2 << 8
     ACCEL_RANGE_16G = 3 << 8
     positions=['Closed','Tight','Half Open','Wide Open']
+    cp = None # Center positions
+    fileName = None
 
     def __init__(self, periph):
         SensorBase.__init__(self, periph)
@@ -154,39 +157,41 @@ class MovementSensorMPU9250(SensorBase):
         return struct.unpack("<hhhhhhhhh", dval)
         
     def calibrate(self):
-        cp = list(range(len(self.positions)))
-        fileName = "cal_imu_{0}.pkl".format(tag.deviceAddr().replace(':','').lower())
-        if (os.path.isfile(fileName)):
-            with open(filename, 'rb') as f:
-                cp = pickle.load(f) 
+        self.cp = list(range(len(self.positions)))
+        self.fileName = "cal_imu_{0}.pkl".format(self.periph.addr.replace(':','').lower())
+        if (os.path.isfile(self.fileName)):
+            with open(self.fileName, 'rb') as f:
+                self.cp = pickle.load(f) 
         else:
             pc = list(range(9))
             for k, pos in enumerate(self.positions):
                 input("Please put in position {0}".format(pos))
                 p = list()
                 for i in range(20):  #  Number of calibrations per position
+                    tag = self.periph
                     p.append(tag.magnetometer.read()+tag.accelerometer.read()+tag.gyroscope.read())
                 for j in range(9):
                     x = list()
-                    for i in len(p):
+                    for i in range(len(p)):
                         x.append(p[i][j])
                     pc[j] = statistics.mean(x)
-                cp[k] = [pc[0],pc[1],pc[2],pc[3],pc[4],pc[5],pc[6],pc[7],pc[8]]
-            with open(fileName, 'wb') as f:
-                pickle.dump(cp, f)
+                self.cp[k] = [pc[0],pc[1],pc[2],pc[3],pc[4],pc[5],pc[6],pc[7],pc[8]]
+            with open(self.fileName, 'wb') as f:
+                pickle.dump(self.cp, f)
     
     def readPosition(self):
         for k in range(10):  
+            tag = self.periph 
             p = [tag.magnetometer.read()[0], tag.magnetometer.read()[1], tag.magnetometer.read()[2], tag.accelerometer.read()[0], tag.accelerometer.read()[1], tag.accelerometer.read()[2], tag.gyroscope.read()[0], tag.gyroscope.read()[1], tag.gyroscope.read()[2]]
             imin = 0
             dmin = 9999999999999999
-            for i, pos in enumerate(positions):
-                d = distance.euclidean(p,cp[i]) 
+            for i, pos in enumerate(self.positions):
+                d = distance.euclidean(p,self.cp[i]) 
                 print(i, d, imin, dmin)
                 if d < dmin:
                     imin = i
                     dmin = d
-            return positions[imin]
+            return self.positions[imin]
 
 
 class AccelerometerSensorMPU9250:
@@ -426,7 +431,6 @@ class SensorTag(Peripheral):
             self.keypress = KeypressSensor(self)
             self.lightmeter = OpticalSensorOPT3001(self)
             self.battery = BatterySensor(self)
-            
 
 class KeypressDelegate(DefaultDelegate):
     BUTTON_L = 0x02
@@ -479,54 +483,22 @@ def main():
 
     print('Connecting to ' + host)
     tag = SensorTag(host)
-    filename = "cal_{0}.pkl".format(host.replace(':','')) 
-
+    
     tag.accelerometer.enable()
     tag.magnetometer.enable()
     tag.gyroscope.enable()
- 
+
+    tag.mpu9250.calibrate()
+
+
     # Some sensors (e.g., temperature, accelerometer) need some time for initialization.
     # Not waiting here after enabling a sensor, the first read value might be empty or incorrect.
     time.sleep(1.0)
 
-    yn = input("Do you want to (re)calibrate <y/n>?")
-    
-    pc = list(range(9))
-    positions=['Closed','Tight','Half Open','Wide Open']
-    cp = list(range(len(positions)))
-    if (yn == 'y'):
-        for k, pos in enumerate(positions):
-            input("Please put in position {0}".format(pos))
-            p = list()
-            for i in range(20):
-                p.append(tag.magnetometer.read()+tag.accelerometer.read()+tag.gyroscope.read())
-            for j in range(9):
-                x = list()
-                for i in range(20):
-                    x.append(p[i][j])
-                x_m = statistics.mean(x)
-                x_s = statistics.stdev(x)
-                pc[j] = x_m
-            cp[k] = [pc[0],pc[1],pc[2],pc[3],pc[4],pc[5],pc[6],pc[7],pc[8]]
-        print(cp)
-        with open(filename, 'wb') as f:
-            pickle.dump(cp, f)
-    else:
-        with open(filename, 'rb') as f:
-            cp = pickle.load(f)    
-        print("Testing\n")
-        for k in range(10):  
-            input("Set position")
-            p = [tag.magnetometer.read()[0], tag.magnetometer.read()[1], tag.magnetometer.read()[2], tag.accelerometer.read()[0], tag.accelerometer.read()[1], tag.accelerometer.read()[2], tag.gyroscope.read()[0], tag.gyroscope.read()[1], tag.gyroscope.read()[2]]
-            imin = 0
-            dmin = 9999999999999999
-            for i, pos in enumerate(positions):
-                d = distance.euclidean(p,cp[i]) 
-                print(i, d, imin, dmin)
-                if d < dmin:
-                    imin = i
-                    dmin = d
-            print("Probably {0}".format(positions[imin]))
+    print("Testing\n")
+    for k in range(10):  
+        input("Set position")
+        print("Probably {0}".format(tag.mpu9250.readPosition()))
     tag.disconnect()
 
 if __name__ == "__main__":
