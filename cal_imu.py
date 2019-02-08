@@ -134,6 +134,7 @@ class MovementSensorMPU9250(SensorBase):
     ACCEL_RANGE_4G  = 1 << 8
     ACCEL_RANGE_8G  = 2 << 8
     ACCEL_RANGE_16G = 3 << 8
+    positions=['Closed','Tight','Half Open','Wide Open']
 
     def __init__(self, periph):
         SensorBase.__init__(self, periph)
@@ -151,6 +152,42 @@ class MovementSensorMPU9250(SensorBase):
     def rawRead(self):
         dval = self.data.read()
         return struct.unpack("<hhhhhhhhh", dval)
+        
+    def calibrate(self):
+        cp = list(range(len(self.positions)))
+        fileName = "cal_imu_{0}.pkl".format(tag.deviceAddr().replace(':','').lower())
+        if (os.path.isfile(fileName)):
+            with open(filename, 'rb') as f:
+                cp = pickle.load(f) 
+        else:
+            pc = list(range(9))
+            for k, pos in enumerate(self.positions):
+                input("Please put in position {0}".format(pos))
+                p = list()
+                for i in range(20):  #  Number of calibrations per position
+                    p.append(tag.magnetometer.read()+tag.accelerometer.read()+tag.gyroscope.read())
+                for j in range(9):
+                    x = list()
+                    for i in len(p):
+                        x.append(p[i][j])
+                    pc[j] = statistics.mean(x)
+                cp[k] = [pc[0],pc[1],pc[2],pc[3],pc[4],pc[5],pc[6],pc[7],pc[8]]
+            with open(fileName, 'wb') as f:
+                pickle.dump(cp, f)
+    
+    def readPosition(self):
+        for k in range(10):  
+            p = [tag.magnetometer.read()[0], tag.magnetometer.read()[1], tag.magnetometer.read()[2], tag.accelerometer.read()[0], tag.accelerometer.read()[1], tag.accelerometer.read()[2], tag.gyroscope.read()[0], tag.gyroscope.read()[1], tag.gyroscope.read()[2]]
+            imin = 0
+            dmin = 9999999999999999
+            for i, pos in enumerate(positions):
+                d = distance.euclidean(p,cp[i]) 
+                print(i, d, imin, dmin)
+                if d < dmin:
+                    imin = i
+                    dmin = d
+            return positions[imin]
+
 
 class AccelerometerSensorMPU9250:
     def __init__(self, sensor_):
@@ -378,27 +415,7 @@ class SensorTag(Peripheral):
         else:
             self.firmwareVersion = u''
 
-        if version==SENSORTAG_V1:
-            self.IRtemperature = IRTemperatureSensor(self)
-            self.accelerometer = AccelerometerSensor(self)
-            self.humidity = HumiditySensor(self)
-            self.magnetometer = MagnetometerSensor(self)
-            self.barometer = BarometerSensor(self)
-            self.gyroscope = GyroscopeSensor(self)
-            self.keypress = KeypressSensor(self)
-            self.lightmeter = None
-        elif version==SENSORTAG_2650:
-            self.mpu9250 = MovementSensorMPU9250(self)
-            self.IRtemperature = IRTemperatureSensorTMP007(self)
-            self.accelerometer = AccelerometerSensorMPU9250(self.mpu9250)
-            self.humidity = HumiditySensorHDC1000(self)
-            self.magnetometer = MagnetometerSensorMPU9250(self.mpu9250)
-            self.barometer = BarometerSensorBMP280(self)
-            self.gyroscope = GyroscopeSensorMPU9250(self.mpu9250)
-            self.keypress = KeypressSensor(self)
-            self.lightmeter = OpticalSensorOPT3001(self)
-            self.battery = BatterySensor(self)
-        elif version==SENSORTAG_1350:
+        if version==SENSORTAG_1350:
             self.mpu9250 = MovementSensorMPU9250(self)
 #            self.IRtemperature = IRTemperatureSensorTMP007(self)
             self.accelerometer = AccelerometerSensorMPU9250(self.mpu9250)
@@ -409,6 +426,7 @@ class SensorTag(Peripheral):
             self.keypress = KeypressSensor(self)
             self.lightmeter = OpticalSensorOPT3001(self)
             self.battery = BatterySensor(self)
+            
 
 class KeypressDelegate(DefaultDelegate):
     BUTTON_L = 0x02
@@ -451,6 +469,7 @@ def TimeDiff(start, end):
         return int(round(time.time()*1000000))
     def delta(self):
         return time.time()-self.t0
+
 
 def main():
     import sys
