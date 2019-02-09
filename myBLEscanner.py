@@ -241,7 +241,7 @@ def paireddevicefactory( dev ):
         return None
     else:
         #return BLE_Device( dev, devdata )
-        return BLE_Device(dev.addr)
+        return BLE_Device(dev)
 
 # this scandelegate handles discovery of new devices
 class ScanDelegate(bluepy.btle.DefaultDelegate):
@@ -788,6 +788,8 @@ for dev in devices:
                     s_ssr = BarometerSensorBMP280(ssr)
                 elif (funct == 'Optical'):
                     s_ssr == OpticalSensorOPT3001(ssr)
+                elif (funct == 'PIR'):
+                    s_ssr = PIRSensor(ssr)
                 else:
                     s_ssr = ssr
                 test.sensors.append(s_ssr)
